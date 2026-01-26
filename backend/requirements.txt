@@ -1,0 +1,5 @@
+numpy==1.21.6
+pygame==2.6.1
+python-dotenv==0.21.1
+eventlet==0.33.3
+python-socketio==5.8.0
