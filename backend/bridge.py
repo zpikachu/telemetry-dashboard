@@ -43,32 +43,17 @@ running = True
 
 # 🔋 Virtual Battery SoC
 soc = SOC_START
-
+battery_dead=False
 @sio.event
 def connect(sid, environ):
     print(f"Client connected: {sid}")
-
-def shutdown_system():
-    print("🔴 Force shutting down CARLA + Python + Socket")
-
-    global running
-    running = False
-
-    try:
-        import pygame
-        pygame.quit()
-        print("Pygame closed")
-    except:
-        pass
-
-    os._exit(0)
 
 # ==============================
 # TELEMETRY SPY
 # ==============================
 class TelemetrySpy:
     def on_tick(self, snapshot):
-        global latest_payload, soc, running
+        global latest_payload, soc, running,battery_dead
 
         try:
             if not hasattr(ac, "world") or ac.world is None:
@@ -97,11 +82,12 @@ class TelemetrySpy:
                 "soc": round(soc, 2)
             }
 
-            if soc <= 0 and SHUTDOWN_ON_SOC_ZERO:
-                print("🔋 Battery empty! Stopping vehicle...")
-                vehicle.apply_control(ac.carla.VehicleControl(throttle=0, brake=1.0))
-                shutdown_system()
 
+            if soc <= 0 and SHUTDOWN_ON_SOC_ZERO and not battery_dead:
+                battery_dead = True
+                print("🔋 Battery empty! Stopping vehicle...")
+                vehicle.apply_control(ac.carla.VehicleControl(throttle=0, brake=1.0,hand_brake=True))
+                vehicle.set_simulate_physics(False)
         except Exception as e:
             print("Telemetry error:", e)
 
@@ -118,15 +104,27 @@ def telemetry_pusher():
 # ==============================
 # HOOK CARLA
 # ==============================
+
 def hook_into_carla():
     spy = TelemetrySpy()
-    while not hasattr(ac, "world") and running:
-        print("Waiting for CARLA world...")
-        time.sleep(1)
 
-    if hasattr(ac, "world"):
-        ac.world.world.on_tick(spy.on_tick)
-        print(">>> Bridge Online: CARLA hooked")
+    import carla
+
+    while running:
+        try:
+            client = carla.Client("127.0.0.1", 2000)
+            client.set_timeout(5.0)
+
+            world = client.get_world()
+
+            world.on_tick(spy.on_tick)
+
+            print(">>> Bridge Online: CARLA hooked successfully")
+            return
+
+        except Exception:
+            print("Waiting for CARLA world...")
+            time.sleep(1)
 
 # ==============================
 # START CARLA IN REAL THREAD

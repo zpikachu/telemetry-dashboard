@@ -103,8 +103,8 @@ py -3.7 --version
 **Option B: Using Git**
 
 ```bash
-git clone https://github.com/yourusername/carla-telemetry-dashboard.git
-cd carla-telemetry-dashboard
+git clone https://github.com/zpikachu/telemetry-dashboard.git
+cd telemetry-dashboard
 ```
 
 ### Step 2: Install Python Packages
